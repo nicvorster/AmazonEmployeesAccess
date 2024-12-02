@@ -1,6 +1,7 @@
 library(tidymodels)
 library(embed) # for target encoding
 library(vroom)
+library(themis)
 
 amazondata <- vroom("Amazontrain.csv")
 amazontestData  <- vroom("Amazontest.csv")
@@ -8,14 +9,12 @@ amazontestData  <- vroom("Amazontest.csv")
 amazondata$ACTION = as.factor(amazondata$ACTION)
 
 my_recipe <- recipe(ACTION ~ . , data=amazondata) %>%
-step_mutate_at(all_numeric_predictors(), fn = factor) %>% # turn all numeric features into factors
-  step_other(all_nominal_predictors(), threshold = .001) %>% # combines categorical values that occur
-  step_dummy(all_nominal_predictors()) %>%  # dummy variable encoding
-step_normalize(all_predictors()) %>%
-step_pca(all_predictors(), threshold=0.8) 
-  ###step_lencode_mixed(vars_I_want_to_target_encode, outcome = vars(target_var)) #target encoding (must
-# also step_lencode_glm() and step_lencode_bayes()
-
+  step_mutate_at(all_numeric_predictors(), fn = factor) %>% # turn all numeric features into factors
+  step_lencode_mixed(all_nominal_predictors(), outcome = vars(ACTION)) %>%  #target encoding (must
+  step_normalize(all_predictors()) %>%
+  step_pca(all_predictors(), threshold=0.85) %>% 
+  step_smote(all_outcomes(), neighbors=4) %>% 
+  step_downsample()
 
 # NOTE: some of these step functions are not appropriate to use together
 
@@ -46,7 +45,7 @@ kaggle_submission1 <- amazon_predictions %>%
  
 
 ## Write out the file
-vroom_write(x=kaggle_submission1, file="./LogRegPreds.csv", delim=",")
+vroom_write(x=kaggle_submission1, file="./LogRegSmotePreds.csv", delim=",")
 
 
 ### PENALIZED LINEAR REGRESSION ###
@@ -97,5 +96,5 @@ kaggle_submission2 <- amazon2_predictions %>%
 
 
 ## Write out the file
-vroom_write(x=kaggle_submission2, file="./PenRegPreds.csv", delim=",")
+vroom_write(x=kaggle_submission2, file="./PenRegSmotePreds.csv", delim=",")
 
